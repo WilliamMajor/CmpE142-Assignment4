@@ -9,8 +9,10 @@ using namespace std;
 pthread_mutex_t lock     	= PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock1     	= PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock2     	= PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock3     	= PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t foodOut1   	= PTHREAD_COND_INITIALIZER;
 pthread_cond_t foodOut2		= PTHREAD_COND_INITIALIZER;
+pthread_cond_t foodOut3		= PTHREAD_COND_INITIALIZER;
 pthread_cond_t C2Done		= PTHREAD_COND_INITIALIZER;
 //pthread_cond_t C3Done		= PTHREAD_COND_INITIALIZER;
 
@@ -21,13 +23,12 @@ void *chef(void * A);
 
 //use an int array to handle the current food being served 
 int food[3] = {0,0,0}; //i[0] = Handburger, i[1] = Fries, i[2] = Soda
-int count = 0;
+
 //volatile bool foodReady = false;
 atomic <bool> done1(false);
 atomic <bool> done2(false);
-volatile bool done3 = false;
+atomic <bool> done3(false);
 volatile bool cdone = false;
-volatile bool busy = false;
 int mealcountc1 = 0;
 int mealcountc2 = 0;
 int mealcountc3 = 0;
@@ -42,14 +43,14 @@ int main(int argc, char *argv[]) {
 	
 	rc = pthread_create(&c1, NULL, &customerH, NULL);
 	rc = pthread_create(&c2, NULL, &customerF, NULL);
-	//rc = pthread_create(&c3, NULL, &customerS, NULL);
+	rc = pthread_create(&c3, NULL, &customerS, NULL);
 	rc = pthread_create(&chef1, NULL, &chef, NULL);
 	
 
 
 	pthread_join(c1,NULL);
-	//pthread_join(c2,NULL);
-	//pthread_join(c3,NULL);
+	pthread_join(c2,NULL);
+	pthread_join(c3,NULL);
 	pthread_join(chef1,NULL);
 
 	//printf("Customer 1 meals eaten %d\n",mealcountc1);
@@ -70,7 +71,7 @@ void *customerH(void * A)
 		//pthread_mutex_lock(&lock);
 		pthread_cond_wait(&foodOut1, &lock1);
 		pthread_mutex_unlock(&lock1);
-
+		//cout << food[0] << "," << food[1] << "," << food[2] << endl << endl;
 		(food[1] == 1) ? hasFries = true : hasFries = false;
 		(food[2] == 1) ? hasSoda = true : hasSoda = false;
 		if(hasHamburger && hasFries && hasSoda)
@@ -98,7 +99,7 @@ void *customerF(void * A)
 		//pthread_mutex_lock(&lock);
 		pthread_cond_wait(&foodOut2, &lock2);
 		pthread_mutex_unlock(&lock2);
-		cout << food[0] << "," << food[1] << "," << food[2] << endl << endl;
+		//cout << food[0] << "," << food[1] << "," << food[2] << endl << endl;
 		(food[0] == 1) ? hasHamburger = true : hasHamburger = false;
 		(food[2] == 1) ? hasSoda = true : hasSoda = false;
 		if(hasHamburger && hasFries && hasSoda)
@@ -118,10 +119,11 @@ void *customerS(void * A)
     bool hasHamburger = true;
     bool hasFries = false;
     bool hasSoda = true;
-	while (count < 1000)
+	while (!cdone)
 	{
 		//pthread_mutex_lock(&lock);
-		pthread_cond_wait(&foodOut1, &lock);
+		pthread_cond_wait(&foodOut3, &lock3);
+		pthread_mutex_unlock(&lock3);
 		
 		//cout << food[0] << "," << food[1] << "," << food[2] << endl << endl;
 		(food[0] == 1) ? hasHamburger = true : hasHamburger = false;
@@ -131,9 +133,11 @@ void *customerS(void * A)
 		{
 			mealcountc3++;
 		}
-		pthread_mutex_unlock(&lock);
 		hasHamburger = false;
 		hasFries = false;
+		pthread_mutex_lock(&lock);
+		done3 = true;
+		pthread_mutex_unlock(&lock);
 		
 	}
 	//cout << "customer 3" << endl;
@@ -143,8 +147,9 @@ void *customerS(void * A)
 void *chef(void * A)
 {
 	int f1,f2;
+	int count = 0;
 	srand(time(NULL));
-	while (count <= 100)
+	while (count < 99)
 	{
 		pthread_mutex_lock(&lock);
 		food[0] = 0;
@@ -181,17 +186,20 @@ void *chef(void * A)
 		//foodReady = true;
 		pthread_cond_signal(&foodOut1);
 		pthread_cond_signal(&foodOut2);
+		pthread_cond_signal(&foodOut3);
 		pthread_mutex_unlock(&lock);
 		
 		//cout << food[0] << "," << food[1] << "," << food[2] << endl << endl;
-		while(!done1.load() || !done2.load())
+		while(!done1.load() || !done2.load() || !done3.load())
 		{
+			usleep(1000);
 		}
 		
 		
 		pthread_mutex_lock(&lock);
 		done1 = false;
 		done2 = false;
+		done3 = false;
 		pthread_mutex_unlock(&lock);
 		count++;
 	}
@@ -200,6 +208,7 @@ void *chef(void * A)
 	pthread_mutex_unlock(&lock);
 	pthread_cond_signal(&foodOut1);
 	pthread_cond_signal(&foodOut2);
+	pthread_cond_signal(&foodOut3);
 
 	
 	pthread_exit(NULL);
