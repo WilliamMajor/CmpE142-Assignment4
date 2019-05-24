@@ -53,12 +53,9 @@ int main(int argc, char *argv[]) {
 	pthread_join(c3,NULL);
 	pthread_join(chef1,NULL);
 
-	//printf("Customer 1 meals eaten %d\n",mealcountc1);
-	//printf("Customer 2 meals eaten %d\n",mealcountc2);
 	cout << "Customer 1 meals eaten " << mealcountc1 << endl;
 	cout << "Customer 2 meals eaten " << mealcountc2 << endl;
 	cout << "Customer 3 meals eaten " << mealcountc3 << endl;
-	//cout << "end of main" << endl;
 
 }
 void *customerH(void * A)
@@ -80,9 +77,9 @@ void *customerH(void * A)
 		}	
 		hasFries = false;
 		hasSoda = false;
-		pthread_mutex_lock(&lock);
+		//pthread_mutex_lock(&lock);
 		done1 = true;
-		pthread_mutex_unlock(&lock);
+		//pthread_mutex_unlock(&lock);
 	}
 	//cout << "Customer 1 meals eaten " << mealcountc1 << endl;
 	pthread_exit(NULL);
@@ -108,9 +105,9 @@ void *customerF(void * A)
 		}
 		hasHamburger = false;
 		hasSoda = false;
-		pthread_mutex_lock(&lock);
+		//pthread_mutex_lock(&lock);
 		done2 = true;
-		pthread_mutex_unlock(&lock);	
+		//pthread_mutex_unlock(&lock);	
 	}
 	pthread_exit(NULL);
 }
@@ -135,9 +132,9 @@ void *customerS(void * A)
 		}
 		hasHamburger = false;
 		hasFries = false;
-		pthread_mutex_lock(&lock);
+		//pthread_mutex_lock(&lock);
 		done3 = true;
-		pthread_mutex_unlock(&lock);
+		//pthread_mutex_unlock(&lock);
 		
 	}
 	//cout << "customer 3" << endl;
@@ -185,14 +182,17 @@ void *chef(void * A)
 		food[f2] = 1;
 		//foodReady = true;
 		pthread_cond_signal(&foodOut1);
+		usleep(5000);
 		pthread_cond_signal(&foodOut2);
+		usleep(5000);
 		pthread_cond_signal(&foodOut3);
+		usleep(5000);
 		pthread_mutex_unlock(&lock);
 		
 		//cout << food[0] << "," << food[1] << "," << food[2] << endl << endl;
 		while(!done1.load() || !done2.load() || !done3.load())
 		{
-			usleep(1000);
+			usleep(10000);
 		}
 		
 		
